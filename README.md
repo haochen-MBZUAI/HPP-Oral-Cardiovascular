@@ -51,7 +51,7 @@ For NHANES, use metadata with `sample_id`, `age`, `sex`, `smoking_status` (Never
 Rscript nhanes_validation.R outputs/NHANES_candidates.csv data/NHANES_metadata.csv data/NHANES_genus_counts.csv outputs/NHANES_results.csv
 ```
 
-Install the R package `survey` before running. NHANES uses Bonferroni correction jointly across all valid two-sided P values for unique candidate genus–endpoint pairs pooled across both HPP strategies. Each shared genus–endpoint pair contributes one test. External support uses adjusted P<0.05; direction concordance follows the HPP candidate signs. For mapped genera, all significant HPP strains must share the external sign.
+Install the R package `survey` before running. NHANES genus abundances use the same zero replacement, PPM normalization and log10 transformation as HPP. Survey-weighted linear models adjust for age, sex and smoking. Direction concordance follows the HPP candidate signs; mapped genera require all significant HPP strains to share the external sign.
 
 `compare_nhanes` joins the candidate and corrected external results. `nhanes_replication_summary` reports significant and direction-concordant counts for each strategy and endpoint.
 
