@@ -16,7 +16,7 @@ def numeric(values):
 
 
 def prepare_abundance(raw):
-    """>200 detections -> half-positive-1st-percentile zeros -> sample PPM -> log10.
+    """>=200 detections -> half-positive-1st-percentile zeros -> sample PPM -> log10.
 
     PPM uses the row total across the complete microbial layer.
     """
@@ -24,9 +24,9 @@ def prepare_abundance(raw):
     x = raw[[c for c in raw if c not in meta]].apply(numeric)
     if x.isna().any().any() or (x < 0).any().any():
         raise ValueError("Expected finite, nonnegative raw abundances")
-    x = x.loc[:, (x > 0).sum() > 200].copy()
+    x = x.loc[:, (x > 0).sum() >= 200].astype(float)
     if x.empty:
-        raise ValueError("No features passed detection >200")
+        raise ValueError("No features passed detection >=200")
     for col in x:
         threshold = x.loc[x[col] > 0, col].quantile(0.01)
         x.loc[x[col] == 0, col] = threshold / 2

@@ -28,7 +28,7 @@ Strain identifiers include their `g__` genus annotation for external comparison.
 
 ## Analysis
 
-Features detected in >200 samples are retained. Zeros are replaced with half the first percentile of positive abundance, followed by sample-level PPM normalization and log10 transformation. Phenotype cleaning estimates mean and sample SD within the shortest 95% interval, excludes values beyond 8 SD, and clips the remainder at ±5 SD.
+Features detected in ≥200 samples are retained. Zeros are replaced with half the first percentile of positive abundance, followed by sample-level PPM normalization and log10 transformation. Phenotype cleaning estimates mean and sample SD within the shortest 95% interval, excludes values beyond 8 SD, and clips the remainder at ±5 SD.
 
 Primary OLS models adjust for age, categorical sex and smoking, with at least 50 complete observations. Bonferroni correction covers all valid two-sided coefficient P values within each layer across all 34 phenotypes. Additional bilateral models use the same paired sample within each feature/trait and jointly correct all features × five traits × six models. Oral-health models use the primary correction procedure after adding the two ordinal scores.
 
@@ -51,7 +51,9 @@ For NHANES, use metadata with `sample_id`, `age`, `sex`, `smoking_status` (Never
 Rscript nhanes_validation.R outputs/NHANES_candidates.csv data/NHANES_metadata.csv data/NHANES_genus_counts.csv outputs/NHANES_results.csv
 ```
 
-Install the R package `survey` before running. `compare_nhanes` in `summaries.py` joins the candidate and external results. External support uses two-sided unadjusted P<0.05; direction concordance follows the HPP candidate signs. For mapped genera, all significant HPP strains must share the external sign.
+Install the R package `survey` before running. NHANES uses Bonferroni correction jointly across all valid two-sided P values for unique candidate genus–endpoint pairs pooled across both HPP strategies. Each shared genus–endpoint pair contributes one test. External support uses adjusted P<0.05; direction concordance follows the HPP candidate signs. For mapped genera, all significant HPP strains must share the external sign.
+
+`compare_nhanes` joins the candidate and corrected external results. `nhanes_replication_summary` reports significant and direction-concordant counts for each strategy and endpoint.
 
 Tests use synthetic data to check the statistical logic. The manuscript's numerical results are generated from the study data. Code is released under the [MIT License](LICENSE).
 

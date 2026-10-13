@@ -3,7 +3,7 @@ import pandas as pd
 from models import bonferroni, bilateral, mwas
 from preprocess import prepare_abundance, clean_phenotypes, oral_scores
 from phenotypes import PHENOTYPES
-from summaries import prioritize, compare_nhanes, bilateral_concordance, postural_patterns
+from summaries import prioritize, compare_nhanes, bilateral_concordance, postural_patterns, nhanes_replication_summary
 
 
 def test_global_correction():
@@ -13,13 +13,15 @@ def test_global_correction():
 
 
 def test_preprocessing():
-    raw = pd.DataFrame(dict(participant_id=range(210),A=[0]+[2]*209,B=[4]*210,rare=[1]*200+[0]*10))
+    raw = pd.DataFrame(dict(participant_id=range(210),A=[0]+[2]*209,B=[4]*210,rare=[1]*199+[0]*11))
     d = prepare_abundance(raw)
     assert "rare" not in d
     assert d.A.iloc[0] == np.log10(1/5*1e6)
     np.testing.assert_allclose(10**d.A+10**d.B,1e6)
     clean = clean_phenotypes(pd.DataFrame(dict(participant_id=range(100),x=[0]*96+[100,200,300,400])))
     assert clean.x.isna().sum()==4
+    boundary = pd.DataFrame(dict(participant_id=range(210),exactly_200=[1]*200+[0]*10,B=[4]*210))
+    assert "exactly_200" in prepare_abundance(boundary)
 
 
 def test_missing_oral_answers():
@@ -58,8 +60,21 @@ def test_ranking_support_and_deduplication():
     assert len(source)==4
 
 
-def test_mixed_hpp_signs_keep_external_nominal_support_separate():
+def test_mixed_hpp_signs_do_not_count_as_concordant():
     candidates=pd.DataFrame(dict(strategy=["strain_to_genus"],genus=["Prevotella"],endpoint=["pulse"],expected_direction=["mixed"]))
     external=pd.DataFrame(dict(genus=["Prevotella"],endpoint=["pulse"],beta=[1.],raw_P=[.049]))
     d=compare_nhanes(candidates,external)
-    assert d.nominal_significant.iloc[0] and not d.same_direction_significant.iloc[0]
+    assert d.significant.iloc[0] and not d.same_direction_significant.iloc[0]
+
+
+def test_external_bonferroni_pools_unique_tests_across_strategies():
+    candidates=pd.DataFrame(dict(strategy=["native_genus","strain_to_genus","strain_to_genus"],
+        genus=["A","A","B"],endpoint=["pulse"]*3,expected_direction=["positive"]*3))
+    external=pd.DataFrame(dict(genus=["A","B"],endpoint=["pulse"]*2,beta=[1.,1.],raw_P=[.02,.03]))
+    d=compare_nhanes(candidates,external)
+    assert d.bonferroni_tests.eq(2).all()
+    np.testing.assert_allclose(d.adjusted_P,[.04,.04,.06])
+    assert d.significant.tolist()==[True,True,False]
+    summary=nhanes_replication_summary(d).set_index("strategy")
+    assert summary.loc["strain_to_genus","significant"]==1
+    assert summary.loc["strain_to_genus","testable"]==2

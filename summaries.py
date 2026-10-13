@@ -109,9 +109,26 @@ def genus_candidates(native, strains):
 
 
 def compare_nhanes(candidates, external):
+    keys = ["genus", "endpoint"]
+    external = external.merge(candidates[keys].drop_duplicates(), on=keys, validate="one_to_one")
+    valid = external.raw_P.between(0, 1) & np.isfinite(external.beta)
+    external["bonferroni_tests"] = int(valid.sum())
+    external["adjusted_P"] = (external.raw_P * valid.sum()).clip(upper=1).where(valid)
     d = candidates.merge(external, on=["genus", "endpoint"], how="left", validate="many_to_one")
     d["testable"] = d.raw_P.between(0, 1) & np.isfinite(d.beta)
-    d["nominal_significant"] = d.testable & d.raw_P.lt(0.05)
+    d["significant"] = d.testable & d.adjusted_P.lt(0.05)
     d["same_direction"] = (d.expected_direction.eq("positive") & d.beta.gt(0)) | (d.expected_direction.eq("negative") & d.beta.lt(0))
-    d["same_direction_significant"] = d.nominal_significant & d.same_direction
+    d["same_direction_significant"] = d.significant & d.same_direction
     return d
+
+
+def nhanes_replication_summary(comparison):
+    rows = []
+    for (strategy, endpoint), d in comparison.groupby(["strategy", "endpoint"]):
+        n = int(d.testable.sum())
+        significant, concordant = int(d.significant.sum()), int(d.same_direction_significant.sum())
+        rows.append(dict(strategy=strategy, endpoint=endpoint, testable=n, significant=significant,
+                         same_direction_significant=concordant, significant_pct=100 * significant / n if n else np.nan,
+                         same_direction_pct=100 * concordant / n if n else np.nan))
+    return pd.DataFrame(rows, columns=["strategy", "endpoint", "testable", "significant",
+                                       "same_direction_significant", "significant_pct", "same_direction_pct"])
