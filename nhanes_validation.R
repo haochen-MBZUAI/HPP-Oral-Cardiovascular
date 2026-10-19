@@ -40,7 +40,9 @@ rows <- lapply(seq_len(nrow(sets)),function(i) {
 })
 result <- if (length(rows)) do.call(rbind,rows) else data.frame(genus=character(),endpoint=character(),N=integer(),beta=double(),raw_P=double())
 valid <- is.finite(result$raw_P) & result$raw_P>=0 & result$raw_P<=1 & is.finite(result$beta)
-result$bonferroni_tests <- rep(sum(valid),nrow(result))
-result$adjusted_P <- ifelse(valid,pmin(result$raw_P*sum(valid),1),NA_real_)
+# One BH-FDR family: unique valid genus–outcome tests from both strategies/outcomes.
+result$fdr_tests <- rep(sum(valid),nrow(result))
+result$adjusted_P <- rep(NA_real_,nrow(result))
+result$adjusted_P[valid] <- p.adjust(result$raw_P[valid],method="BH")
 result$significant <- !is.na(result$adjusted_P) & result$adjusted_P<.05
 write.csv(result,args[4],row.names=FALSE)

@@ -3,6 +3,7 @@ import re
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
+from models import bh_fdr
 from phenotypes import DOMAIN, ORIENTATION, PAIRS, PERSISTENCE_STAGES, MEASURES, REFERENCE_COUNTS
 
 
@@ -111,9 +112,7 @@ def genus_candidates(native, strains):
 def compare_nhanes(candidates, external):
     keys = ["genus", "endpoint"]
     external = external.merge(candidates[keys].drop_duplicates(), on=keys, validate="one_to_one")
-    valid = external.raw_P.between(0, 1) & np.isfinite(external.beta)
-    external["bonferroni_tests"] = int(valid.sum())
-    external["adjusted_P"] = (external.raw_P * valid.sum()).clip(upper=1).where(valid)
+    external = bh_fdr(external, by_layer=False)
     d = candidates.merge(external, on=["genus", "endpoint"], how="left", validate="many_to_one")
     d["testable"] = d.raw_P.between(0, 1) & np.isfinite(d.beta)
     d["significant"] = d.testable & d.adjusted_P.lt(0.05)

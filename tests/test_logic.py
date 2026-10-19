@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from models import bonferroni, bilateral, mwas
+from models import bh_fdr, bilateral, mwas
 from preprocess import prepare_abundance, clean_phenotypes, oral_scores
 from phenotypes import PHENOTYPES
 from summaries import prioritize, compare_nhanes, bilateral_concordance, postural_patterns, nhanes_replication_summary
@@ -8,8 +8,8 @@ from summaries import prioritize, compare_nhanes, bilateral_concordance, postura
 
 def test_global_correction():
     d = pd.DataFrame(dict(layer=["strain"]*4, feature=["A","A","B","B"], beta=[1]*4, raw_P=[.01,.02,.01,np.nan]))
-    result = bonferroni(d)
-    np.testing.assert_allclose(result.adjusted_P,[.03,.06,.03,np.nan],equal_nan=True)
+    result = bh_fdr(d)
+    np.testing.assert_allclose(result.adjusted_P,[.015,.02,.015,np.nan],equal_nan=True)
 
 
 def test_preprocessing():
@@ -39,12 +39,12 @@ def test_primary_and_paired_models():
     phenotypes={domain:pd.DataFrame({"participant_id":range(n),**{p:2*a.A+rng.normal(size=n) for p in names}}) for domain,names in PHENOTYPES.items()}
     phenotypes["carotid_ultrasound"].loc[:3,"imt_right"]=np.nan
     primary=mwas(a,phenotypes,cov,"gene_family")
-    assert len(primary)==68 and primary.bonferroni_tests.eq(68).all()
+    assert len(primary)==68 and primary.fdr_tests.eq(68).all()
     concordance=bilateral_concordance(primary)
     assert len(concordance)==5 and concordance.beta_spearman.abs().le(1).all()
     assert "both_standing" in postural_patterns(primary)
     pairs=bilateral(a,phenotypes,cov)
-    assert len(pairs)==60 and pairs.bonferroni_tests.eq(60).all()
+    assert len(pairs)==60 and pairs.fdr_tests.eq(60).all()
     for _,block in pairs.groupby(["feature","trait"]):
         assert block.N.nunique()==1
         beta=block.set_index("model").beta
@@ -67,14 +67,14 @@ def test_mixed_hpp_signs_do_not_count_as_concordant():
     assert d.significant.iloc[0] and not d.same_direction_significant.iloc[0]
 
 
-def test_external_bonferroni_pools_unique_tests_across_strategies():
+def test_external_bh_fdr_pools_unique_tests_across_strategies():
     candidates=pd.DataFrame(dict(strategy=["native_genus","strain_to_genus","strain_to_genus"],
         genus=["A","A","B"],endpoint=["pulse"]*3,expected_direction=["positive"]*3))
     external=pd.DataFrame(dict(genus=["A","B"],endpoint=["pulse"]*2,beta=[1.,1.],raw_P=[.02,.03]))
     d=compare_nhanes(candidates,external)
-    assert d.bonferroni_tests.eq(2).all()
-    np.testing.assert_allclose(d.adjusted_P,[.04,.04,.06])
-    assert d.significant.tolist()==[True,True,False]
+    assert d.fdr_tests.eq(2).all()
+    np.testing.assert_allclose(d.adjusted_P,[.03,.03,.03])
+    assert d.significant.tolist()==[True,True,True]
     summary=nhanes_replication_summary(d).set_index("strategy")
-    assert summary.loc["strain_to_genus","significant"]==1
+    assert summary.loc["strain_to_genus","significant"]==2
     assert summary.loc["strain_to_genus","testable"]==2

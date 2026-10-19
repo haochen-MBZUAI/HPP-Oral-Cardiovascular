@@ -1,7 +1,8 @@
-"""Ordinary least-squares models and full within-layer Bonferroni correction."""
+"""Ordinary least-squares models and within-layer Benjamini–Hochberg FDR correction."""
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from statsmodels.stats.multitest import multipletests
 from phenotypes import DOMAIN, PAIRS
 from preprocess import numeric
 
@@ -26,13 +27,27 @@ def ols(data, outcome, feature, extra=()):
     return result
 
 
-def bonferroni(results):
-    """Call after assembling every feature, phenotype and model in the analysis."""
+def bh_fdr(results, *, by_layer=True):
+    """Correct valid two-sided coefficient P values in each complete test family.
+
+    HPP families are microbial layers; external validation uses one pooled family.
+    Call only after assembling all features, outcomes and models in that family.
+    """
     result = results.copy()
-    valid = result.raw_P.between(0, 1) & np.isfinite(result.raw_P) & np.isfinite(result.beta)
-    m = valid.groupby(result.layer).transform("sum")
-    result["adjusted_P"] = (result.raw_P * m).clip(upper=1).where(valid)
-    result["bonferroni_tests"] = m
+    valid = (result.raw_P.between(0, 1) & np.isfinite(result.raw_P)
+             & np.isfinite(result.beta)).to_numpy()
+    adjusted = np.full(len(result), np.nan)
+    counts = np.zeros(len(result), dtype=int)
+    groups = (result.groupby("layer", sort=False, dropna=False).indices.values()
+              if by_layer else [np.arange(len(result))])
+    for positions in groups:
+        tested = positions[valid[positions]]
+        counts[positions] = len(tested)
+        if len(tested):
+            adjusted[tested] = multipletests(result.raw_P.iloc[tested].to_numpy(),
+                                             method="fdr_bh")[1]
+    result["adjusted_P"] = adjusted
+    result["fdr_tests"] = counts
     result["significant"] = result.adjusted_P < 0.05
     return result
 
@@ -46,7 +61,7 @@ def mwas(abundance, phenotypes, covariates, layer, oral_health=False):
             for outcome in outcomes.columns.drop("participant_id"):
                 rows.append(dict(layer=layer, feature=feature, phenotype=outcome, domain=domain,
                                  **ols(data, outcome, feature, extra)))
-    return bonferroni(pd.DataFrame(rows))
+    return bh_fdr(pd.DataFrame(rows))
 
 
 def bilateral(abundance, phenotypes, covariates, layer="gene_family"):
@@ -64,4 +79,4 @@ def bilateral(abundance, phenotypes, covariates, layer="gene_family"):
             for model, (outcome, extra) in models.items():
                 rows.append(dict(layer=layer, feature=feature, trait=trait, model=model, **ols(d, outcome, feature, extra)))
     # Joint across all features × five traits × all six models, author-confirmed.
-    return bonferroni(pd.DataFrame(rows))
+    return bh_fdr(pd.DataFrame(rows))
