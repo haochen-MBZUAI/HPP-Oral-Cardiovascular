@@ -17,7 +17,7 @@ PAIRS = {"ABI": ("l_abi", "r_abi"), "PWV": ("from_l_thigh_to_l_ankle_pwv", "from
          "cIMT": ("imt_left", "imt_right"), "ankle_pressure": ("l_ankle_pressure", "r_ankle_pressure"),
          "brachial_pressure": ("l_brachial_pressure", "r_brachial_pressure")}
 REFERENCE_COUNTS = {"strain": 783, "gene_family": 355674, "pathway": 786}
-# Descriptive Appendix A2 orientation: +1 higher favourable; -1 higher adverse; 0 unclassified.
+# Extended Data Table 2 orientation: +1 higher favourable; -1 higher adverse; 0 unclassified.
 ORIENTATION = {p: -1 for p in DOMAIN}
 for p in ("l_abi", "r_abi", "vessel_density", "fractal_dimension", "artery_average_width",
           "artery_vessel_density", "artery_fractal_dimension", "vein_vessel_density", "vein_fractal_dimension"):

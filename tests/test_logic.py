@@ -28,7 +28,7 @@ def test_missing_oral_answers():
     d = pd.DataFrame(dict(participant_id=range(3),bleeding_gums=[3,2,np.nan],abscess_or_gingivitis=[2,0,0],teeth_mobility_lately=[3,2,np.nan]))
     result = oral_scores(d)
     np.testing.assert_allclose(result.soft_tissue_inflammation,[2,1,np.nan],equal_nan=True)
-    np.testing.assert_allclose(result.periodontal_destruction,[2,1,np.nan],equal_nan=True)
+    np.testing.assert_allclose(result.tooth_mobility,[2,1,np.nan],equal_nan=True)
 
 
 def test_primary_and_paired_models():
@@ -44,7 +44,13 @@ def test_primary_and_paired_models():
     assert len(concordance)==5 and concordance.beta_spearman.abs().le(1).all()
     assert "both_standing" in postural_patterns(primary)
     pairs=bilateral(a,phenotypes,cov)
-    assert len(pairs)==60 and pairs.fdr_tests.eq(60).all()
+    assert len(pairs)==60
+    mean=pairs[pairs.model.eq("mean")]
+    assert len(mean)==10 and mean.fdr_tests.eq(10).all() and mean.correction.eq("bh_fdr").all()
+    asym=pairs[pairs.correction.eq("bonferroni_x34")]
+    assert len(asym)==30
+    np.testing.assert_allclose(asym.adjusted_P,(asym.raw_P*34).clip(upper=1))
+    assert pairs[pairs.model.isin(["left","right"])].adjusted_P.isna().all()
     for _,block in pairs.groupby(["feature","trait"]):
         assert block.N.nunique()==1
         beta=block.set_index("model").beta

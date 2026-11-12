@@ -1,4 +1,4 @@
-"""Ordinary least-squares models and within-layer Benjamini–Hochberg FDR correction."""
+"""Ordinary least-squares models, Benjamini–Hochberg FDR and bilateral-model corrections."""
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
@@ -53,7 +53,7 @@ def bh_fdr(results, *, by_layer=True):
 
 
 def mwas(abundance, phenotypes, covariates, layer, oral_health=False):
-    extra = ("soft_tissue_inflammation", "periodontal_destruction") if oral_health else ()
+    extra = ("soft_tissue_inflammation", "tooth_mobility") if oral_health else ()
     rows = []
     for domain, outcomes in phenotypes.items():
         data = join(join(abundance, outcomes), covariates)
@@ -78,5 +78,30 @@ def bilateral(abundance, phenotypes, covariates, layer="gene_family"):
                       "mean_adjusted_absolute_asymmetry": ("absolute_asymmetry", ("bilateral_mean",))}
             for model, (outcome, extra) in models.items():
                 rows.append(dict(layer=layer, feature=feature, trait=trait, model=model, **ols(d, outcome, feature, extra)))
-    # Joint across all features × five traits × all six models, author-confirmed.
-    return bh_fdr(pd.DataFrame(rows))
+    return bilateral_correction(pd.DataFrame(rows))
+
+
+ASYMMETRY_MODELS = ("absolute_asymmetry", "signed_difference", "mean_adjusted_absolute_asymmetry")
+
+
+def bilateral_correction(results, multiplier=len(DOMAIN)):
+    """Bilateral-mean models: BH-FDR across all features × five traits.
+
+    Asymmetry models: per-feature Bonferroni correction (raw P × the number of
+    vascular phenotypes, 34 in the manuscript).
+    Left and right coefficients are reported on the paired sample; their
+    significance comes from the primary MWAS.
+    """
+    result = results.copy()
+    valid = result.raw_P.between(0, 1) & np.isfinite(result.beta)
+    result["adjusted_P"], result["fdr_tests"], result["correction"] = np.nan, 0, "primary_mwas"
+    mean = result.model.eq("mean")
+    corrected = bh_fdr(result[mean], by_layer=False)
+    result.loc[mean, "adjusted_P"] = corrected.adjusted_P
+    result.loc[mean, "fdr_tests"] = corrected.fdr_tests
+    result.loc[mean, "correction"] = "bh_fdr"
+    asymmetry = result.model.isin(ASYMMETRY_MODELS)
+    result.loc[asymmetry & valid, "adjusted_P"] = (result.raw_P[asymmetry & valid] * multiplier).clip(upper=1)
+    result.loc[asymmetry, "correction"] = f"bonferroni_x{multiplier}"
+    result["significant"] = result.adjusted_P < 0.05
+    return result

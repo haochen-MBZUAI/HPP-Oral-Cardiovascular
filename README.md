@@ -8,7 +8,7 @@ Demonstration code for **The oral microbiome maps distinct functional and struct
 | --- | --- |
 | `phenotypes.py` | Phenotype names, vascular domains and descriptive orientations |
 | `preprocess.py` | Abundance preprocessing, phenotype cleaning and oral-health scores |
-| `models.py` | Primary/sensitivity OLS, bilateral models and Benjamini–Hochberg (BH-FDR) correction |
+| `models.py` | Primary/sensitivity OLS, bilateral models, BH-FDR and bilateral-model corrections |
 | `summaries.py` | Feature ranking, bilateral/postural patterns and NHANES comparison |
 | `paired_correlations.py` | Paired Spearman correlations, bootstrap CIs and eye-effect concordance |
 | `run_demo.py` | Run the HPP workflow and export CSV summaries |
@@ -30,7 +30,7 @@ Strain identifiers include their `g__` genus annotation for external comparison.
 
 Features detected in ≥200 samples are retained. Zeros are replaced with half the first percentile of positive abundance, followed by sample-level PPM normalization and log10 transformation. Phenotype cleaning estimates mean and sample SD within the shortest 95% interval, excludes values beyond 8 SD, and clips the remainder at ±5 SD.
 
-Primary OLS models adjust for age, categorical sex and smoking, with at least 50 complete observations. Benjamini–Hochberg (BH-FDR) correction covers all valid two-sided coefficient P values within each layer across all 34 phenotypes. Additional bilateral models use the same paired sample within each feature/trait and jointly correct all features × five traits × six models. Oral-health models use the same within-layer BH-FDR procedure, applied separately to all valid tests from each oral-health-adjusted layer after adding the two ordinal scores. Associations are significant at BH-adjusted P < 0.05.
+Primary OLS models adjust for age, categorical sex and smoking, with at least 50 complete observations. Benjamini–Hochberg (BH-FDR) correction covers all valid two-sided coefficient P values within each layer across all 34 phenotypes. Additional bilateral models use the same paired sample within each feature/trait. Bilateral-mean models use BH-FDR across all features × five traits; the absolute-asymmetry, signed-difference and mean-adjusted absolute-asymmetry models use per-feature Bonferroni correction with a multiplier of 34. Oral-health models add the soft-tissue inflammation and tooth-mobility scores and use the same within-layer BH-FDR procedure. Associations are significant at BH-adjusted P < 0.05.
 
 Feature ranking uses association count, summed −log10(adjusted P), smallest adjusted P and identifier. Postural persistence uses the primary supine and standing-stage significance indicators. Bootstrap correlations use 1,000 paired draws, refitting covariate models in each draw. Rows represent participants in the supplied study tables.
 

@@ -65,7 +65,7 @@ def oral_scores(raw, bleeding="bleeding_gums", abscess="abscess_or_gingivitis", 
     valid = b.isin([0, 1, 2, 3]) & a.isin([0, 1, 2])
     score = np.where((b == 3) & (a == 2), 2, np.where((b == 2) | (a == 2), 1, 0))
     result["soft_tissue_inflammation"] = np.where(valid, score, np.nan)
-    result["periodontal_destruction"] = np.where(m.isin([0, 1, 2, 3]), np.where(m == 3, 2, np.where(m == 2, 1, 0)), np.nan)
+    result["tooth_mobility"] = np.where(m.isin([0, 1, 2, 3]), np.where(m == 3, 2, np.where(m == 2, 1, 0)), np.nan)
     return result
 
 
