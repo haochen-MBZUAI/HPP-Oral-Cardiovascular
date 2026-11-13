@@ -60,7 +60,6 @@ def test_external_family_spans_strategies_and_outcomes_without_duplicates():
     np.testing.assert_allclose(result.adjusted_P, [.03, .03, .04, .04, np.nan], equal_nan=True)
     assert result.fdr_tests.dropna().eq(3).all()
     assert not result.testable.iloc[-1] and not result.significant.iloc[-1]
-    # Ignore stale correction columns from an older result file; use raw P values.
     external["adjusted_P"] = 1.
     pd.testing.assert_frame_equal(result, compare_nhanes(candidates, external))
 

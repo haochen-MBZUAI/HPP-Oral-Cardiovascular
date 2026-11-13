@@ -1,4 +1,4 @@
-"""Core preprocessing; inputs are author-selected, same-visit, one-person-one-row tables."""
+"""Abundance preprocessing, phenotype cleaning and oral-health scores."""
 import numpy as np
 import pandas as pd
 from phenotypes import RETINAL
@@ -16,10 +16,7 @@ def numeric(values):
 
 
 def prepare_abundance(raw):
-    """>=200 detections -> half-positive-1st-percentile zeros -> sample PPM -> log10.
-
-    PPM uses the row total across the complete microbial layer.
-    """
+    """>=200 detections -> half-positive-1st-percentile zeros -> sample PPM -> log10."""
     meta = {"participant_id", "cohort", "research_stage", "array_index", "collection_date", "oral_collection_date", "visit_id"}
     x = raw[[c for c in raw if c not in meta]].apply(numeric)
     if x.isna().any().any() or (x < 0).any().any():
@@ -52,7 +49,6 @@ def clean_phenotypes(raw):
 
 
 def retinal_means(raw_eyes):
-    """Demo eye columns use left_<phenotype> and right_<phenotype>."""
     result = raw_eyes[["participant_id"]].copy()
     for p in RETINAL:
         result[p] = (numeric(raw_eyes["left_" + p]) + numeric(raw_eyes["right_" + p])) / 2

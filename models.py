@@ -28,11 +28,7 @@ def ols(data, outcome, feature, extra=()):
 
 
 def bh_fdr(results, *, by_layer=True):
-    """Correct valid two-sided coefficient P values in each complete test family.
-
-    HPP families are microbial layers; external validation uses one pooled family.
-    Call only after assembling all features, outcomes and models in that family.
-    """
+    """BH-FDR within each microbial layer, or across one pooled family."""
     result = results.copy()
     valid = (result.raw_P.between(0, 1) & np.isfinite(result.raw_P)
              & np.isfinite(result.beta)).to_numpy()
@@ -78,20 +74,15 @@ def bilateral(abundance, phenotypes, covariates, layer="gene_family"):
                       "mean_adjusted_absolute_asymmetry": ("absolute_asymmetry", ("bilateral_mean",))}
             for model, (outcome, extra) in models.items():
                 rows.append(dict(layer=layer, feature=feature, trait=trait, model=model, **ols(d, outcome, feature, extra)))
-    return bilateral_correction(pd.DataFrame(rows))
+    n_phenotypes = sum(len(table.columns.drop("participant_id")) for table in phenotypes.values())
+    return bilateral_correction(pd.DataFrame(rows), multiplier=n_phenotypes)
 
 
 ASYMMETRY_MODELS = ("absolute_asymmetry", "signed_difference", "mean_adjusted_absolute_asymmetry")
 
 
-def bilateral_correction(results, multiplier=len(DOMAIN)):
-    """Bilateral-mean models: BH-FDR across all features × five traits.
-
-    Asymmetry models: per-feature Bonferroni correction (raw P × the number of
-    vascular phenotypes, 34 in the manuscript).
-    Left and right coefficients are reported on the paired sample; their
-    significance comes from the primary MWAS.
-    """
+def bilateral_correction(results, multiplier):
+    """Bilateral means: BH-FDR across features × traits. Asymmetry: raw P × number of phenotypes read."""
     result = results.copy()
     valid = result.raw_P.between(0, 1) & np.isfinite(result.beta)
     result["adjusted_P"], result["fdr_tests"], result["correction"] = np.nan, 0, "primary_mwas"

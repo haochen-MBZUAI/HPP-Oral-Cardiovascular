@@ -47,9 +47,10 @@ def test_primary_and_paired_models():
     assert len(pairs)==60
     mean=pairs[pairs.model.eq("mean")]
     assert len(mean)==10 and mean.fdr_tests.eq(10).all() and mean.correction.eq("bh_fdr").all()
-    asym=pairs[pairs.correction.eq("bonferroni_x34")]
+    n_phenotypes=sum(table.shape[1]-1 for table in phenotypes.values())
+    asym=pairs[pairs.correction.eq(f"bonferroni_x{n_phenotypes}")]
     assert len(asym)==30
-    np.testing.assert_allclose(asym.adjusted_P,(asym.raw_P*34).clip(upper=1))
+    np.testing.assert_allclose(asym.adjusted_P,(asym.raw_P*n_phenotypes).clip(upper=1))
     assert pairs[pairs.model.isin(["left","right"])].adjusted_P.isna().all()
     for _,block in pairs.groupby(["feature","trait"]):
         assert block.N.nunique()==1

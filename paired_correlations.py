@@ -46,7 +46,6 @@ def phenotype_correlations(phenotypes, covariates, eyes=None, repetitions=1000):
         for trait in RETINAL:
             rows.append(dict(group="retinal", trait=trait, left="left_"+trait, right="right_"+trait,
                              **bootstrap_correlation(d, "left_"+trait, "right_"+trait, repetitions)))
-    # Each row represents one participant in the same-visit study input.
     return pd.DataFrame(rows)
 
 

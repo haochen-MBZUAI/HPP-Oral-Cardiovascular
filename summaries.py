@@ -16,7 +16,6 @@ def prioritize(results):
                             ascending=[True, True, False, False, True, True])
     selected = rank.groupby(["layer", "domain"]).head(5)
     unique = selected[["layer", "feature"]].drop_duplicates()
-    # Join each unique selected feature to its full vascular profile.
     source = results.merge(unique, on=["layer", "feature"], validate="many_to_one")
     return selected, source
 
